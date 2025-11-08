@@ -1,10 +1,25 @@
 
-  import { defineConfig } from 'vite';
-  import react from '@vitejs/plugin-react-swc';
-  import path from 'path';
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react-swc';
+import path from 'path';
 
-  export default defineConfig({
-    plugins: [react()],
+// Импортируем basic-ssl для автоматического создания SSL сертификата
+// Если пакет не установлен, выполните: npm install @vitejs/plugin-basic-ssl --save-dev
+// Для локальной сети HTTPS отключен, так как самоподписанные сертификаты блокируются
+let basicSsl: any = null;
+const useHttps = process.env.VITE_USE_HTTPS === 'true'; // Используйте HTTPS только если явно указано
+try {
+  if (useHttps) {
+    const basicSslModule = require('@vitejs/plugin-basic-ssl');
+    basicSsl = basicSslModule.default || basicSslModule;
+  }
+} catch (e) {
+  console.warn('@vitejs/plugin-basic-ssl не установлен. HTTPS может не работать.');
+  console.warn('Установите пакет: npm install @vitejs/plugin-basic-ssl --save-dev');
+}
+
+export default defineConfig({
+  plugins: basicSsl ? [react(), basicSsl()] : [react()],
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       alias: {
@@ -55,6 +70,10 @@
     },
     server: {
       port: 3000,
+      host: '0.0.0.0', // Позволяет доступ из локальной сети
+      strictPort: false, // Позволяет использовать другой порт, если 3000 занят
       open: true,
+      // Отключаем HTTPS для локальной сети (самоподписанные сертификаты могут блокироваться)
+      // HTTPS настраивается автоматически через @vitejs/plugin-basic-ssl только если нужен
     },
   });
